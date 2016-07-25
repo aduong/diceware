@@ -3,13 +3,6 @@ import java.text.{NumberFormat,DecimalFormat}
 import scala.io.Source
 import scala.util.{Try,Random,Either}
 
-case class Arguments(
-  numWords: Int,
-  noNumbers: Boolean,
-  noSymbols: Boolean,
-  strong: Boolean,
-  separator: String
-)
 
 val FileName = "diceware.wordlist"
 val NumFormat = NumberFormat.getInstance
@@ -28,34 +21,44 @@ def isInt(str: String): Boolean = Try(str.toInt).map(_ => true).getOrElse(false)
 
 def isSymbol(str: String): Boolean = !str.forall(_.isLetterOrDigit)
 
-def readNumWords(args: Array[String]): Either[String, Int] =
-  args.find(isInt).map(_.toInt)
-    .toRight("Error: password length missing.\n" + UsageStr)
+case class Arguments(
+  numWords: Int,
+  noNumbers: Boolean,
+  noSymbols: Boolean,
+  strong: Boolean,
+  separator: String
+)
 
-def readSeparator(args: Array[String]): Either[String, Option[String]] = {
-  val i = args.indexOf("--separator")
-  if (i < 0) Right(None)
-  else {
-    val separatorIdx = i + 1
-    if (separatorIdx >= args.size) Left("\"--separator\" present but missing separator argument.\n" + UsageStr)
-    else Right(Some(args(separatorIdx)))
+object Arguments {
+  private[this] def readNumWords(args: Array[String]): Either[String, Int] =
+    args.find(isInt).map(_.toInt)
+      .toRight("Error: password length missing.\n" + UsageStr)
+
+  private[this] def readSeparator(args: Array[String]): Either[String, Option[String]] = {
+    val i = args.indexOf("--separator")
+    if (i < 0) Right(None)
+    else {
+      val separatorIdx = i + 1
+      if (separatorIdx >= args.size) Left("\"--separator\" present but missing separator argument.\n" + UsageStr)
+      else Right(Some(args(separatorIdx)))
+    }
   }
+
+  def fromArray(args: Array[String]): Either[String, Arguments] =
+    if (args.indexOf("--help") >= 0) Left(UsageStr)
+    else {
+      for {
+        numWords <- readNumWords(args).right
+        separatorOpt <- readSeparator(args).right
+      } yield Arguments(
+        numWords,
+        noNumbers = args.indexOf("--no-numbers") >= 0,
+        noSymbols = args.indexOf("--no-symbols") >= 0,
+        strong = args.indexOf("--strong") >= 0,
+        separator = separatorOpt.getOrElse(" ")
+      )
+    }
 }
-
-def readArguments(args: Array[String]): Either[String, Arguments] =
-  if (args.indexOf("--help") >= 0) Left(UsageStr)
-  else {
-    for {
-      numWords <- readNumWords(args).right
-      separatorOpt <- readSeparator(args).right
-    } yield Arguments(
-      numWords,
-      noNumbers = args.indexOf("--no-numbers") >= 0,
-      noSymbols = args.indexOf("--no-symbols") >= 0,
-      strong = args.indexOf("--strong") >= 0,
-      separator = separatorOpt.getOrElse(" ")
-    )
-  }
 
 def readDicewareListFromFile(source: Source): Seq[String] =
   source.getLines.map(_.split("""\s+""")(1)).toIndexedSeq
@@ -72,7 +75,7 @@ def log(str: => String): Unit = {
   System.err.println(str)
 }
 
-readArguments(args) match {
+Arguments.fromArray(args) match {
   case Left(errorStr) =>
     log(errorStr)
     System.exit(1)
@@ -122,5 +125,6 @@ readArguments(args) match {
       randStream(wordList.size, strong)
         .map(wordList)
         .take(numWords)
-        .mkString(separator))
+        .mkString(separator)
+    )
 }
