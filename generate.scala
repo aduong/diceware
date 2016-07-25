@@ -89,9 +89,13 @@ Arguments.fromArray(args) match {
       if (noSymbols) s => isSymbol(s)
       else noExclusion
 
+    // read in the diceware word list
+
     val wordList = readDicewareListFromFile(Source.fromFile(FileName))
       .filterNot(numberExcluder)
       .filterNot(symbolExcluder)
+
+    // log a few things before we generate the password
 
     if (noNumbers) {
       log("Excluding numbers")
@@ -120,6 +124,8 @@ Arguments.fromArray(args) match {
     }
 
     log("")
+
+    // generate and print the password
 
     println(
       randStream(wordList.size, strong)
