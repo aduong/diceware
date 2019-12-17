@@ -1,3 +1,3 @@
 # diceware
 
-Usage: scala -savecompiled generate.scala --help
+Usage: in `sbt`, `run --help`
